@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env/
+*.env
+*.venv
+
+bin/
+lib64
+lib/
+pyvenv.cfg
+share/
+include/
+
+# PyTorch and Hugging Face Diffusers model artifacts
+*.pt
+*.pth
+*.ckpt
+*.bin
+
+# Hugging Face cache
+datasets/
+logs/
+hf_cache/
+~/.cache/huggingface/
+
+# VS Code settings
+.vscode/
+
+# System-specific files
+.DS_Store
+Thumbs.db
