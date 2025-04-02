@@ -1,0 +1,47 @@
+[project]
+name = "knn-diffusion-image-generation"
+version = "0.1.0"
+description = "Image generation using diffusion models for the Convolutional Neural Networks course "
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "accelerate>=1.6.0",
+    "datasets>=3.5.0",
+    "diffusers>=0.32.2",
+    "pytorch-lightning>=2.5.1",
+    "tokenizers>=0.21.1",
+    "torch>=2.6.0",
+    "torch-fidelity>=0.3.0",
+    "torchvision>=0.21.0",
+    "tqdm>=4.67.1",
+    "transformers>=4.50.3",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.ruff]
+line-length = 120
+fix = true
+select = [
+    "F",
+    "E",
+    "W",
+    "B",
+    "I",
+]
+ignore = [
+    "E501",
+]
+fixable = [
+    "I",
+]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
