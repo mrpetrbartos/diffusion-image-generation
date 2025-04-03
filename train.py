@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from models.unet import UNet
 from utils.config import load_config, parse_args
 from utils.dataset import LoadDataset
-from utils.evaluate import evaluate
+from utils.visualize import generate_samples
 
 
 def train():
@@ -29,7 +29,7 @@ def train():
     )
 
     # Load dataset
-    dataset = LoadDataset("nlphuji/flickr30k", split="test", image_size=model_cfg["sample_size"])
+    dataset = LoadDataset("bigdata-pw/TheSimpsons", split="train", image_size=model_cfg["sample_size"])
     train_dataloader = DataLoader(
         dataset,
         batch_size=train_cfg["batch_size"],
@@ -107,11 +107,11 @@ def train():
             global_step += 1
 
         if accelerator.is_main_process:
-            pipeline = DDPMPipeline(unet=accelerator.unwrap_model(model), scheduler=noise_scheduler)
+            pipeline = DDPMPipeline(unet=accelerator.unwrap_model(model).unet, scheduler=noise_scheduler)
 
             # Infer images from random noise and save them for reference
             if (epoch + 1) % train_cfg["save_every_n_epochs"] == 0 or epoch == train_cfg["num_epochs"] - 1:
-                evaluate(train_cfg["save_image_path"], epoch, pipeline, train_cfg["batch_size"])
+                generate_samples(train_cfg["save_image_path"], epoch, pipeline, train_cfg["batch_size"])
 
             # Save the model
             if (epoch + 1) % train_cfg["save_every_n_epochs"] == 0 or epoch == train_cfg["num_epochs"] - 1:

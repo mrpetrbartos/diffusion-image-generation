@@ -13,7 +13,7 @@ def make_grid(images, rows, cols):
     return grid
 
 
-def evaluate(save_path, epoch, pipeline, batch_size):
+def generate_samples(save_path, epoch, pipeline, batch_size):
     # Sample some images from random noise (backward diffusion process)
     images = pipeline(batch_size=batch_size).images
 
