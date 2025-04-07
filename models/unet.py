@@ -19,23 +19,9 @@ class UNet(nn.Module):
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             layers_per_block=self.layers_per_block,
-            block_out_channels=(128, 128, 256, 256, 512, 512),
-            down_block_types=(
-                "DownBlock2D",  # a regular ResNet downsampling block
-                "DownBlock2D",
-                "DownBlock2D",
-                "DownBlock2D",
-                "AttnDownBlock2D",  # a ResNet downsampling block with spatial self-attention
-                "DownBlock2D",
-            ),
-            up_block_types=(
-                "UpBlock2D",
-                "AttnUpBlock2D",  # Mirroring upsampling block with spatial self-attention
-                "UpBlock2D",
-                "UpBlock2D",
-                "UpBlock2D",
-                "UpBlock2D",
-            ),
+            block_out_channels=self.block_out_channels,
+            down_block_types=self.down_block_types,
+            up_block_types=self.up_block_types,
         )
 
     def forward(self, x, timesteps):
