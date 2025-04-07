@@ -29,7 +29,9 @@ def train():
     )
 
     # Load dataset
-    dataset = LoadDataset("bigdata-pw/TheSimpsons", split="train", image_size=model_cfg["sample_size"])
+    dataset = LoadDataset(
+        "bigdata-pw/TheSimpsons", split="train", image_size=model_cfg["sample_size"], caption_detail=0
+    )
     train_dataloader = DataLoader(
         dataset,
         batch_size=train_cfg["batch_size"],
@@ -66,7 +68,7 @@ def train():
         progress_bar.set_description(f"Epoch {epoch}")
 
         for _, batch in enumerate(train_dataloader):
-            clean_images = batch
+            clean_images, captions = batch
 
             # Sample noise to add to the images
             noise = torch.randn(clean_images.shape, device=clean_images.device)
