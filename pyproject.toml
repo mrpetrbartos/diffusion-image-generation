@@ -1,7 +1,7 @@
 [project]
-name = "knn-diffusion-image-generation"
+name = "diffusion-image-generation"
 version = "0.1.0"
-description = "Image generation using diffusion models for the Convolutional Neural Networks course "
+description = "Image generation using Diffusion models for the Convolutional Neural Networks course"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

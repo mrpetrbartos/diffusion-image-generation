@@ -1,3 +1,6 @@
+import os
+import sys
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -6,6 +9,8 @@ from diffusers import DDPMPipeline, DDPMScheduler
 from diffusers.optimization import get_cosine_schedule_with_warmup
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
+
+sys.path.append(os.path.abspath(".."))
 
 from models.unet import UNet
 from utils.config import load_config, parse_args

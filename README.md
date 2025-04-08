@@ -31,10 +31,10 @@ uv pip install -r pyproject.toml
 
 ## Running the Scripts
 
-You can run training or evaluation using the provided scripts:
+You can run training or evaluation using the provided scripts inside the `scripts/` directory:
 
 ```bash
-python training.py
+python train.py
 ```
 
 ```bash
@@ -44,7 +44,7 @@ python eval.py
 If you'd like to use a custom configuration file, you can specify the path using the `--config` flag:
 
 ```bash
-python training.py --config configs/your_config.yaml
+python train.py --config configs/your_config.yaml
 ```
 
 The configuration file should follow the same structure as the example configs provided in the `configs/` directory.
