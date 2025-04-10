@@ -5,14 +5,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from accelerate import Accelerator
-from diffusers import DDPMPipeline, DDPMScheduler
+from diffusers import DDIMScheduler, StableDiffusionPipeline
 from diffusers.optimization import get_cosine_schedule_with_warmup
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
+from transformers import CLIPTextModel, CLIPTokenizer
 
 sys.path.append(os.path.abspath(".."))
 
-from models.unet import UNet
+from diffusers import AutoencoderKL
+
+from models.unet import ConditionalUNet
 from utils.config import load_config, parse_args
 from utils.dataset import LoadDataset
 from utils.visualize import generate_samples
@@ -35,7 +38,7 @@ def train():
 
     # Load dataset
     dataset = LoadDataset(
-        "bigdata-pw/TheSimpsons", split="train", image_size=model_cfg["sample_size"], caption_detail=0
+        "bigdata-pw/TheSimpsons", split="train", image_size=train_cfg["sample_size"], caption_detail=0
     )
     train_dataloader = DataLoader(
         dataset,
@@ -45,10 +48,14 @@ def train():
         pin_memory=True,
     )
 
-    # Initialize model & noise scheduler
-    model = UNet(config=model_cfg)
+    # Initialize model, autoencoder, CLIP embeddings & noise scheduler
+    model = ConditionalUNet(config=model_cfg)
+    vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse")
 
-    noise_scheduler = DDPMScheduler(
+    tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+    text_encoder = CLIPTextModel.from_pretrained("openai/clip-vit-large-patch14")
+
+    noise_scheduler = DDIMScheduler(
         num_train_timesteps=scheduler_cfg["num_train_timesteps"],
     )
 
@@ -61,8 +68,8 @@ def train():
         num_training_steps=(len(train_dataloader) * train_cfg["num_epochs"]),
     )
 
-    model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-        model, optimizer, train_dataloader, lr_scheduler
+    model, vae, text_encoder, tokenizer, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+        model, vae, text_encoder, tokenizer, optimizer, train_dataloader, lr_scheduler
     )
 
     global_step = 0
@@ -75,9 +82,21 @@ def train():
         for _, batch in enumerate(train_dataloader):
             clean_images, captions = batch
 
+            inputs = tokenizer(
+                captions, padding="max_length", max_length=tokenizer.model_max_length, return_tensors="pt"
+            )
+            input_ids = inputs.input_ids.to(clean_images.device)
+
+            unwrapped_vae = accelerator.unwrap_model(vae)
+
+            with torch.no_grad():
+                latents = unwrapped_vae.encode(clean_images).latent_dist.sample()
+                latents = latents * 0.18215  # scaling factor from Stable Diffusion convention
+                text_embeddings = text_encoder(input_ids)[0]
+
             # Sample noise to add to the images
-            noise = torch.randn(clean_images.shape, device=clean_images.device)
-            bs = clean_images.shape[0]
+            noise = torch.randn(latents.shape, device=clean_images.device)
+            bs = latents.shape[0]
 
             # Sample a random timestep for each image
             timesteps = torch.randint(
@@ -88,12 +107,12 @@ def train():
                 dtype=torch.int64,
             )
 
-            # Add noise to the clean images according to the noise magnitude at each timestep
-            noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
+            # Add noise to the image latents according to the noise magnitude at each timestep
+            noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
             with accelerator.accumulate(model):
                 # Predict the noise residual
-                noise_pred = model(noisy_images, timesteps)[0]
+                noise_pred = model(noisy_latents, timesteps, encoder_hidden_states=text_embeddings)[0]
                 loss = loss_fn(noise_pred, noise)
                 accelerator.backward(loss)
 
@@ -114,11 +133,19 @@ def train():
             global_step += 1
 
         if accelerator.is_main_process:
-            pipeline = DDPMPipeline(unet=accelerator.unwrap_model(model).unet, scheduler=noise_scheduler)
+            pipeline = StableDiffusionPipeline(
+                vae=unwrapped_vae,
+                text_encoder=accelerator.unwrap_model(text_encoder),
+                tokenizer=tokenizer,
+                unet=accelerator.unwrap_model(model).unet,
+                scheduler=noise_scheduler,
+                safety_checker=None,
+                feature_extractor=None,
+            )
 
             # Infer images from random noise and save them for reference
             if (epoch + 1) % train_cfg["save_every_n_epochs"] == 0 or epoch == train_cfg["num_epochs"] - 1:
-                generate_samples(train_cfg["save_image_path"], epoch, pipeline, train_cfg["batch_size"])
+                generate_samples(train_cfg["save_image_path"], epoch, pipeline)
 
             # Save the model
             if (epoch + 1) % train_cfg["save_every_n_epochs"] == 0 or epoch == train_cfg["num_epochs"] - 1:

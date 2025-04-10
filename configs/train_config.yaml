@@ -1,23 +1,25 @@
 training:
-  batch_size: 40
+  sample_size: 256
+  batch_size: 16
   learning_rate: 0.0001
   lr_warmup_steps: 500
   num_epochs: 200
   gradient_accumulation_steps: 1
-  save_model_path: "models/pretrained/"
-  save_image_path: "generated_images"
+  save_model_path: "../models/pretrained/"
+  save_image_path: "../generated_images"
   mixed_precision: "fp16" # "fp16" for mixed precision, "no" for full precision
-  save_every_n_epochs: 25
+  save_every_n_epochs: 10
 
 model:
-  sample_size: 128
-  in_channels: 3
-  out_channels: 3
+  in_size: 64
+  in_channels: 4
+  out_channels: 4
   layers_per_block: 2
-  block_out_channels: !tuple [128, 128, 256, 256, 512, 512]
-  down_block_types: !tuple ["DownBlock2D", "DownBlock2D", "DownBlock2D", "DownBlock2D", "AttnDownBlock2D", "DownBlock2D"]
-  up_block_types: !tuple ["UpBlock2D", "AttnUpBlock2D", "UpBlock2D", "UpBlock2D", "UpBlock2D", "UpBlock2D"]
+  block_out_channels: !tuple [256, 512, 1024, 1024]
+  down_block_types: !tuple ["DownBlock2D", "DownBlock2D", "CrossAttnDownBlock2D", "DownBlock2D"]
+  up_block_types: !tuple ["UpBlock2D", "CrossAttnUpBlock2D", "UpBlock2D", "UpBlock2D"]
+  cross_attention_dim: 768
 
 scheduler:
   num_train_timesteps: 1000
-  beta_schedule: "linear"
+  beta_schedule: "cosine"

@@ -13,12 +13,16 @@ def make_grid(images, rows, cols):
     return grid
 
 
-def generate_samples(save_path, epoch, pipeline, batch_size):
+def generate_samples(save_path, epoch, pipeline):
+    # Example prompt for the images
+    prompts = ["Bart Simpson"] * 9
+
     # Sample some images from random noise (backward diffusion process)
-    images = pipeline(batch_size=batch_size).images
+    output = pipeline(prompts, num_inference_steps=50)
+    images = output.images
 
     # Make a grid out of the images
-    image_grid = make_grid(images, rows=4, cols=4)
+    image_grid = make_grid(images, rows=3, cols=3)
 
     # Save the images
     os.makedirs(save_path, exist_ok=True)
