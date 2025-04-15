@@ -26,7 +26,7 @@ class ConditionalUNet(nn.Module):
             cross_attention_dim=self.cross_attention_dim,
         )
 
-    def forward(self, x, timesteps, encoder_hidden_states):
+    def forward(self, x, timesteps, encoder_hidden_states, encoder_attention_mask):
         """
         Forward pass of the conditional UNet.
         Args:
@@ -34,4 +34,6 @@ class ConditionalUNet(nn.Module):
             timesteps: The number of timesteps to denoise an input
             encoder_hidden_states: Conditioning information (e.g., text embeddings)
         """
-        return self.unet(x, timesteps, encoder_hidden_states=encoder_hidden_states)
+        return self.unet(
+            x, timesteps, encoder_hidden_states=encoder_hidden_states, encoder_attention_mask=encoder_attention_mask
+        )

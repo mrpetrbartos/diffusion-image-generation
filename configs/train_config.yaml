@@ -1,8 +1,9 @@
 training:
   sample_size: 256
-  batch_size: 16
+  batch_size: 48
   learning_rate: 0.0001
   lr_warmup_steps: 500
+  cfg_dropout_prob: 0.2
   num_epochs: 200
   gradient_accumulation_steps: 1
   save_model_path: "../models/pretrained/"
@@ -15,7 +16,7 @@ model:
   in_channels: 4
   out_channels: 4
   layers_per_block: 2
-  block_out_channels: !tuple [256, 512, 1024, 1024]
+  block_out_channels: !tuple [128, 256, 512, 512]
   down_block_types: !tuple ["DownBlock2D", "DownBlock2D", "CrossAttnDownBlock2D", "DownBlock2D"]
   up_block_types: !tuple ["UpBlock2D", "CrossAttnUpBlock2D", "UpBlock2D", "UpBlock2D"]
   cross_attention_dim: 768

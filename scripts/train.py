@@ -86,13 +86,23 @@ def train():
                 captions, padding="max_length", max_length=tokenizer.model_max_length, return_tensors="pt"
             )
             input_ids = inputs.input_ids.to(clean_images.device)
+            attention_mask = inputs.attention_mask.to(clean_images.device)
 
             unwrapped_vae = accelerator.unwrap_model(vae)
 
             with torch.no_grad():
                 latents = unwrapped_vae.encode(clean_images).latent_dist.sample()
                 latents = latents * 0.18215  # scaling factor from Stable Diffusion convention
-                text_embeddings = text_encoder(input_ids)[0]
+                text_embeddings = text_encoder(input_ids, attention_mask=attention_mask)[0]
+
+            # Conditional training with Classifier-Free Guidance Dropout afterwards
+            cfg_prob = train_cfg["cfg_dropout_prob"]
+            if cfg_prob > 0:
+                # Randomly decide which samples should drop the text embeddings
+                drop_mask = torch.rand(text_embeddings.size(0), device=text_embeddings.device) < cfg_prob
+                null_embeddings = torch.zeros_like(text_embeddings)
+                text_embeddings[drop_mask] = null_embeddings[drop_mask]
+                attention_mask[drop_mask] = 0
 
             # Sample noise to add to the images
             noise = torch.randn(latents.shape, device=clean_images.device)
@@ -112,7 +122,13 @@ def train():
 
             with accelerator.accumulate(model):
                 # Predict the noise residual
-                noise_pred = model(noisy_latents, timesteps, encoder_hidden_states=text_embeddings)[0]
+                noise_pred = model(
+                    noisy_latents,
+                    timesteps,
+                    encoder_hidden_states=text_embeddings,
+                    encoder_attention_mask=attention_mask,
+                )[0]
+
                 loss = loss_fn(noise_pred, noise)
                 accelerator.backward(loss)
 

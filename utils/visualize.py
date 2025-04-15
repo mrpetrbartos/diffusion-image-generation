@@ -14,8 +14,7 @@ def make_grid(images, rows, cols):
 
 
 def generate_samples(save_path, epoch, pipeline):
-    # Example prompt for the images
-    prompts = ["Bart Simpson"] * 9
+    prompts = ["A man and a woman in a living room."] * 9
 
     # Sample some images from random noise (backward diffusion process)
     output = pipeline(prompts, num_inference_steps=50)
