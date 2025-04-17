@@ -59,6 +59,9 @@ def train():
         num_train_timesteps=scheduler_cfg["num_train_timesteps"],
     )
 
+    # Compile autoencoder for better performance
+    vae = torch.compile(vae)
+
     # Define optimizer, loss function and learning rate scheduler
     optimizer = optim.AdamW(model.parameters(), lr=train_cfg["learning_rate"])
     loss_fn = nn.MSELoss()
@@ -68,14 +71,24 @@ def train():
         num_training_steps=(len(train_dataloader) * train_cfg["num_epochs"]),
     )
 
+    global_step = 0
+    start_epoch = 0
+
+    if args.resume is not None:
+        checkpoint = torch.load(args.resume, map_location="cpu")
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
+        start_epoch = checkpoint["epoch"] + 1
+        if accelerator.is_main_process:
+            print(f"Resuming training from {args.resume}, starting at epoch {start_epoch}")
+
     model, vae, text_encoder, tokenizer, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
         model, vae, text_encoder, tokenizer, optimizer, train_dataloader, lr_scheduler
     )
 
-    global_step = 0
-
     # Training loop
-    for epoch in range(train_cfg["num_epochs"]):
+    for epoch in range(start_epoch, train_cfg["num_epochs"]):
         progress_bar = tqdm(total=len(train_dataloader), disable=not accelerator.is_local_main_process)
         progress_bar.set_description(f"Epoch {epoch}")
 
@@ -166,7 +179,15 @@ def train():
             # Save the model
             if (epoch + 1) % train_cfg["save_every_n_epochs"] == 0 or epoch == train_cfg["num_epochs"] - 1:
                 pipeline.save_pretrained(train_cfg["save_model_path"])
-                torch.save(model.state_dict(), "model.pth")
+                torch.save(
+                    {
+                        "model_state_dict": accelerator.unwrap_model(model).state_dict(),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+                        "epoch": epoch,
+                    },
+                    f"chckpt_epoch_{epoch}.pth",
+                )
 
 
 if __name__ == "__main__":

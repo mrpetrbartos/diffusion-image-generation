@@ -16,5 +16,8 @@ def load_config(config_path):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Training Configuration")
-    parser.add_argument("--config", type=str, default="../configs/train_config.yaml", help="Path to the config file")
+    parser.add_argument(
+        "--config", type=str, default="../configs/train_config.yaml", help="Path to the training config file"
+    )
+    parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint to resume from")
     return parser.parse_args()
