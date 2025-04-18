@@ -10,6 +10,7 @@ training:
   save_image_path: "../generated_images"
   mixed_precision: "fp16" # "fp16" for mixed precision, "no" for full precision
   save_every_n_epochs: 5
+  eval_every_n_epochs: -1
 
 model:
   in_size: 64

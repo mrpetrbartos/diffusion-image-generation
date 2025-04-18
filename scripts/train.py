@@ -16,6 +16,7 @@ sys.path.append(os.path.abspath(".."))
 from diffusers import AutoencoderKL
 
 from models.unet import ConditionalUNet
+from utils.clip import evaluate_prompt_adherence
 from utils.config import load_config, parse_args
 from utils.dataset import LoadDataset
 from utils.visualize import generate_samples
@@ -37,16 +38,20 @@ def train():
     )
 
     # Load dataset
-    dataset = LoadDataset(
+    train_dataset = LoadDataset(
         "bigdata-pw/TheSimpsons", split="train", image_size=train_cfg["sample_size"], caption_detail=0
     )
+    test_dataset = LoadDataset(
+        "bigdata-pw/TheSimpsons", split="test", image_size=train_cfg["sample_size"], caption_detail=0
+    )
     train_dataloader = DataLoader(
-        dataset,
+        train_dataset,
         batch_size=train_cfg["batch_size"],
         shuffle=True,
         num_workers=8,
         pin_memory=True,
     )
+    test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=4)
 
     # Initialize model, autoencoder, CLIP embeddings & noise scheduler
     model = ConditionalUNet(config=model_cfg)
@@ -73,6 +78,7 @@ def train():
 
     global_step = 0
     start_epoch = 0
+    clip_score = None
 
     if args.resume is not None:
         checkpoint = torch.load(args.resume, map_location="cpu")
@@ -154,6 +160,7 @@ def train():
             progress_bar.update(1)
             logs = {
                 "loss": loss.detach().item(),
+                "clip": clip_score,
                 "lr": lr_scheduler.get_last_lr()[0],
                 "step": global_step,
             }
@@ -171,6 +178,9 @@ def train():
                 safety_checker=None,
                 feature_extractor=None,
             )
+
+            if (n := train_cfg["eval_every_n_epochs"]) > 0 and (epoch + 1) % n == 0:
+                clip_score = evaluate_prompt_adherence(accelerator.device, pipeline, test_loader)
 
             # Infer images from random noise and save them for reference
             if (epoch + 1) % train_cfg["save_every_n_epochs"] == 0 or epoch == train_cfg["num_epochs"] - 1:
