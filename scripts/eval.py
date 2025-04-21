@@ -1,5 +1,5 @@
 from os import path as ospath
-from sys import path
+from sys import argv, path
 
 import pytorch_lightning as pl
 import torch
@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 path.append(ospath.abspath(".."))
 
+from utils.clip import evaluate_prompt_adherence
 from utils.config import load_config
 from utils.dataset import LoadDataset
 
@@ -55,8 +56,31 @@ class GenerativeEvaluator(pl.LightningModule):
         print(f"FID Score: {score.item():.4f}")
         return score
 
+    def compute_clip_score(self):
+        total_score = 0.0
+        count = 0
+
+        max_images = min(self.num_images, len(self.dataset))
+        for i in tqdm(range(0, max_images, self.batch_size), desc="Computing CLIP score"):
+            prompts = [self.dataset[j][1] for j in range(i, min(i + self.batch_size, max_images))]
+            images = self.pipeline(prompt=prompts).images
+            loader = DataLoader(
+                list(zip([self.transform(img) for img in images], prompts, strict=True)),
+                batch_size=self.batch_size,
+                shuffle=False,
+            )
+            score = evaluate_prompt_adherence(device=get_device(), pipeline=self.pipeline, loader=loader)
+
+            total_score += score * len(prompts)
+            count += len(prompts)
+
+        final_score = total_score / count
+        print(f"CLIP Prompt Adherence Score: {final_score:.4f}")
+        return final_score
+
 
 if __name__ == "__main__":
+    args = argv[1:]
     config = load_config("../configs/eval_config.yaml")
 
     model = GenerativeEvaluator(
@@ -66,4 +90,7 @@ if __name__ == "__main__":
         batch_size=config["batch_size"],
     )
 
-    model.compute_fid()
+    if "fid" in args:
+        model.compute_fid()
+    if "clip" in args:
+        model.compute_clip_score()
