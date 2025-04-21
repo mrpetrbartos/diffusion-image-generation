@@ -1,4 +1,4 @@
 num_images: 4096
-image_size: 128
-batch_size: 64
-model_path: "models/pretrained/"
+image_size: 299
+batch_size: 16
+model_path: "../models/pretrained/"
