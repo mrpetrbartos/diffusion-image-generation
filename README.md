@@ -48,3 +48,8 @@ python train.py --config configs/your_config.yaml
 ```
 
 The configuration file should follow the same structure as the example configs provided in the `configs/` directory.
+
+Alternatively you can run inference to sample a image using:
+```bash
+python infer.py --model_path ../models/pretrained --prompt "A man in a suit and a tie."
+```
